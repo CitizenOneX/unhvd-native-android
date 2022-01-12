@@ -1,4 +1,5 @@
 #pragma once
+#include <android/log.h>
 
 class unhvd_native_android
 {

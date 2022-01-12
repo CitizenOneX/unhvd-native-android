@@ -41,6 +41,7 @@
     <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
     <ApplicationType>Android</ApplicationType>
     <ApplicationTypeRevision>3.0</ApplicationTypeRevision>
+    <ProjectName>unhvd</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
@@ -57,6 +58,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>Clang_5_0</PlatformToolset>
+    <UseOfStl>c++_shared</UseOfStl>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -101,6 +103,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <IncludePath>
+    </IncludePath>
+    <ExternalIncludePath>
+    </ExternalIncludePath>
+    <LibraryPath>$(SolutionDir)..\ffmpeg-android-maker\output\lib\armeabi-v7a</LibraryPath>
+    <TargetName>libunhvd</TargetName>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
   </PropertyGroup>
@@ -142,9 +152,29 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <CppLanguageStandard>c++11</CppLanguageStandard>
+      <Verbose>true</Verbose>
+      <AdditionalIncludeDirectories>$(StlIncludeDirectories);$(Sysroot)\usr\include;$(Sysroot)\usr\include\$(AndroidHeaderTriple);$(VS_NdkRoot)\sources\android\support\include;%(AdditionalIncludeDirectories);$(SolutionDir)..\ffmpeg-android-maker\build\ffmpeg\armeabi-v7a\include</AdditionalIncludeDirectories>
+      <CLanguageStandard>c11</CLanguageStandard>
     </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(ToolchainPrebuiltPath)\lib\gcc\$(ToolchainName)\$(ToolchainFullVersionName)\$(PlatformShortName);$(StlLibraryPath)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(SolutionDir)..\ffmpeg-android-maker\output\lib\armeabi-v7a\libavcodec.so;$(SolutionDir)..\ffmpeg-android-maker\output\lib\armeabi-v7a\libavutil.so</AdditionalDependencies>
+      <VerboseOutput>true</VerboseOutput>
+      <SharedLibrarySearchPath>%(SharedLibrarySearchPath);$(SysrootLink)\usr\lib;$(SolutionDir)..\ffmpeg-android-maker\output\lib\armeabi-v7a</SharedLibrarySearchPath>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y D:\Luke\Projects\Hologram\unhvd-native-android\ARM\Debug\libunhvd.so D:\Luke\Projects\Hologram\nreal-unity-nhvd\Assets\Plugins\Android</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>copy unhvd-native-android to Unity project nreal-unity-nhvd</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
@@ -153,11 +183,18 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="unhvd_native_android.cpp" />
+    <ClCompile Include="hdu.c" />
+    <ClCompile Include="hvd.c" />
+    <ClCompile Include="mlsp.c" />
+    <ClCompile Include="nhvd.c" />
+    <ClCompile Include="unhvd.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="unhvd_native_android.h" />
-    <ClInclude Include="pch.h" />
+    <ClInclude Include="hdu.h" />
+    <ClInclude Include="hvd.h" />
+    <ClInclude Include="mlsp.h" />
+    <ClInclude Include="nhvd.h" />
+    <ClInclude Include="unhvd.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

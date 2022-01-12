@@ -17,6 +17,9 @@
 #include "hvd.h"
 
 #include <stdio.h>
+#include <android/log.h>
+
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "unhvd_native_android", __VA_ARGS__))
 
 static int nhvd_decode_frame(struct nhvd *n, struct hvd_packet* packet);
 static struct nhvd *nhvd_close_and_return_null(struct nhvd *n, const char *msg);
@@ -48,6 +51,7 @@ struct nhvd *nhvd_init(
 
 	*n = zero_nhvd;
 
+	LOGI("nhvd: about to set up network server: %s:%d", mlsp_cfg.ip, mlsp_cfg.port);
 	if( (n->network_streamer = mlsp_init_server(&mlsp_cfg)) == NULL )
 		return nhvd_close_and_return_null(n, "failed to initialize network server");
 
@@ -94,7 +98,7 @@ int nhvd_receive_all(struct nhvd *n, AVFrame *frames[], struct nhvd_frame *raws)
 	{
 		if(error == MLSP_TIMEOUT)
 		{
-			fprintf(stderr, ".");
+			LOGI(".");
 			nhvd_decode_frame(n, NULL);
 			return NHVD_TIMEOUT;
 		}
@@ -105,6 +109,7 @@ int nhvd_receive_all(struct nhvd *n, AVFrame *frames[], struct nhvd_frame *raws)
 	{
 		packets[i].data = streamer_frame[i].data;
 		packets[i].size = streamer_frame[i].size;
+		LOGI("PacketSize=%d", packets[i].size);
 	}
 
 	if (nhvd_decode_frame(n, packets) != NHVD_OK)
@@ -142,8 +147,10 @@ static int nhvd_decode_frame(struct nhvd *n, struct hvd_packet *packet)
 		if(!packet[i].size) //silently skip empty subframes
 			continue; //(e.g. different framerates/B frames)
 
+		LOGI("sending packet to decoder[%d]", i);
 		if(hvd_send_packet(n->hardware_decoder[i], &packet[i]) != HVD_OK)
 			return NHVD_ERROR_MSG("error during decoding");
+		LOGI("after send packet completed");
 	}
 
 	//receive data from all hardware decoders
@@ -168,7 +175,7 @@ static int nhvd_decode_frame(struct nhvd *n, struct hvd_packet *packet)
 static struct nhvd *nhvd_close_and_return_null(struct nhvd *n, const char *msg)
 {
 	if(msg)
-		fprintf(stderr, "nhvd: %s\n", msg);
+		LOGI("nhvd: %s", msg);
 
 	nhvd_close(n);
 
@@ -177,6 +184,6 @@ static struct nhvd *nhvd_close_and_return_null(struct nhvd *n, const char *msg)
 
 static int NHVD_ERROR_MSG(const char *msg)
 {
-	fprintf(stderr, "nhvd: %s\n", msg);
+	LOGI("nhvd: %s", msg);
 	return NHVD_ERROR;
 }

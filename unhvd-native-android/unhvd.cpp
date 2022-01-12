@@ -21,6 +21,10 @@
 #include <fstream>
 #include <iostream>
 #include <string.h> //memset
+#include <android/log.h>
+
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "unhvd_native_android", __VA_ARGS__))
+
 
 using namespace std;
 
@@ -59,6 +63,8 @@ struct unhvd *unhvd_init(
 	const unhvd_hw_config *hw_config, int hw_size,
 	const unhvd_depth_config *depth_config)
 {
+	
+	LOGI("starting unhvd_init()");
 	nhvd_net_config nhvd_net = {net_config->ip, net_config->port, net_config->timeout_ms};
 	nhvd_hw_config nhvd_hw[UNHVD_MAX_DECODERS] = {0};
 
@@ -101,7 +107,8 @@ struct unhvd *unhvd_init(
 	}
 
 	u->network_thread = thread(unhvd_network_decoder_thread, u);
-
+	
+	LOGI("unhvd: finishing unhvd_init()");
 	return u;
 }
 
@@ -261,8 +268,10 @@ int unhvd_get_point_cloud_end(unhvd *u)
 
 static unhvd *unhvd_close_and_return_null(unhvd *u, const char *msg)
 {
-	if(msg)
-		cerr << "unhvd: " << msg << endl;
+	if (msg)
+	{
+		LOGI("unhvd: %s", msg);
+	}
 
 	unhvd_close(u);
 
@@ -294,6 +303,7 @@ void unhvd_close(unhvd *u)
 
 static int UNHVD_ERROR_MSG(const char *msg)
 {
-	cerr << "unhvd: " << msg << endl;
+	//cerr << "unhvd: " << msg << endl;
+	LOGI("%s", msg);
 	return UNHVD_ERROR;
 }

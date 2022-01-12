@@ -1,10 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="unhvd_native_android.cpp" />
+    <ClCompile Include="hdu.c" />
+    <ClCompile Include="mlsp.c" />
+    <ClCompile Include="hvd.c" />
+    <ClCompile Include="nhvd.c" />
+    <ClCompile Include="unhvd.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="unhvd_native_android.h" />
-    <ClInclude Include="pch.h" />
+    <ClInclude Include="hdu.h" />
+    <ClInclude Include="mlsp.h" />
+    <ClInclude Include="hvd.h" />
+    <ClInclude Include="nhvd.h" />
+    <ClInclude Include="unhvd.h" />
   </ItemGroup>
 </Project>
