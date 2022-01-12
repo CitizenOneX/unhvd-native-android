@@ -170,7 +170,7 @@
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y D:\Luke\Projects\Hologram\unhvd-native-android\ARM\Debug\libunhvd.so D:\Luke\Projects\Hologram\nreal-unity-nhvd\Assets\Plugins\Android</Command>
+      <Command>copy /y $(OutputPath)libunhvd.so $(SolutionDir)..\nreal-unity-nhvd\Assets\Plugins\Android</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>copy unhvd-native-android to Unity project nreal-unity-nhvd</Message>
