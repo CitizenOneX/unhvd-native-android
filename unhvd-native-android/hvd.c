@@ -35,7 +35,8 @@ struct hvd
 
 static struct hvd *hvd_close_and_return_null(struct hvd *h, const char *msg, const char *msg_details);
 static enum AVPixelFormat hvd_find_pixel_fmt_by_hw_type(const enum AVHWDeviceType type);
-static enum AVPixelFormat hvd_get_hw_pix_format(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts);
+static enum AVPixelFormat hvd_get_hw_pix_format(AVCodecContext* ctx, const enum AVPixelFormat* pix_fmts);
+static enum AVPixelFormat hvd_get_pix_format(AVCodecContext* ctx, const enum AVPixelFormat* pix_fmts);
 static AVFrame *NULL_MSG(const char *msg, const char *msg_details);
 static void hvd_dump_sw_pix_formats(struct hvd *h);
 
@@ -77,14 +78,16 @@ struct hvd *hvd_init(const struct hvd_config *config)
 	if(config->profile)
 		h->decoder_ctx->profile = config->profile;
 
-	/*
+	
 	//Set user data carried by AVContext, we need this to determine pixel format
 	//from within FFmpeg using our supplied function for decoder_ctx->get_format.
 	//This is MUCH easier in FFmpeg 4.0 with avcodec_get_hw_config but we want
 	//to support FFmpeg 3.4 (system FFmpeg on Ubuntu 18.04 until 2028).
-	h->decoder_ctx->opaque = h;
-	h->decoder_ctx->get_format = hvd_get_hw_pix_format;
+	
+	//h->decoder_ctx->opaque = h;
+	//h->decoder_ctx->get_format = hvd_get_pix_format; // set the pix_fmt chooser to my own that returns RGB24
 
+	/*
 	//specified device or NULL / empty string for default
 	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
 
@@ -98,6 +101,38 @@ struct hvd *hvd_init(const struct hvd_config *config)
 	if( (h->decoder_ctx->hw_device_ctx = av_buffer_ref(h->hw_device_ctx) ) == NULL)
 		return hvd_close_and_return_null(h, "unable to reference hw_device_ctx", NULL);
 	*/
+
+	
+	/*LOGI("Available decoders:");
+	void* decoder_iterator = NULL;
+	AVCodec* current_codec = av_codec_iterate(&decoder_iterator);
+	while (current_codec != NULL)
+	{
+		if (av_codec_is_decoder(current_codec))
+		{
+			LOGI(current_codec->name);
+		}
+		current_codec = av_codec_iterate(&decoder_iterator);
+	}*/
+	
+
+	LOGI("Available pixel formats from Codec %s:", decoder->name);
+	if (decoder->pix_fmts != NULL)
+	{
+		const enum AVPixelFormat* iterator = decoder->pix_fmts;
+		while (*iterator != AV_PIX_FMT_NONE)
+		{
+			LOGI("%d : %s", *iterator, av_get_pix_fmt_name(*iterator));
+			++iterator;
+		}
+	}
+	else
+	{
+		LOGI("Pixel formats unknown for decoder %s", decoder->long_name);
+	}
+
+	h->hw_pix_fmt = AV_PIX_FMT_RGB24;
+	h->sw_pix_fmt = AV_PIX_FMT_RGB24;
 
 	if (( err = avcodec_open2(h->decoder_ctx, decoder, NULL)) < 0)
 		return hvd_close_and_return_null(h, "failed to initialize decoder context for", decoder->name);
@@ -171,6 +206,11 @@ static enum AVPixelFormat hvd_get_hw_pix_format(AVCodecContext *ctx, const enum 
 	return AV_PIX_FMT_NONE;
 }
 
+// try a function to set RGB24, since codec has an unkown list of valid pix_fmts
+static enum AVPixelFormat hvd_get_pix_format(AVCodecContext* ctx, const enum AVPixelFormat* pix_fmts)
+{
+	return AV_PIX_FMT_RGB0;
+}
 
 void hvd_close(struct hvd* h)
 {
