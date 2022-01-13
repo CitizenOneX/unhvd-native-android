@@ -204,6 +204,22 @@ int hvd_send_packet(struct hvd *h,struct hvd_packet *packet)
 	h->av_packet.data = (packet) ? packet->data : NULL;
 	h->av_packet.size = (packet) ? packet->size : 0;
 
+
+	// MLSP allows for larger packet buffer (defaults to 32, increase to 64) 
+	// to allow for overreads by optimized decoders
+	// looks like this addresses the invalid packet decoding issue;
+	// switch to a buffer that grows when size+padding is larger, then
+	// memset the part after the packet size copied
+	// if av_packet.size + AV_INPUT_BUFFER_PADDING_SIZE > inbufsize, free inbuf, malloc new inbuf (rounded to 1024 bytes?)
+	/* set end of buffer to 0 (this ensures that no overreading happens for damaged MPEG streams) */
+	//memset(inbuf + h->av_packet.size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+	//uint8_t* inbuf = malloc(h->av_packet.size + AV_INPUT_BUFFER_PADDING_SIZE);
+	//memset(inbuf, 0, h->av_packet.size + AV_INPUT_BUFFER_PADDING_SIZE);
+	//memcpy(inbuf, h->av_packet.data, h->av_packet.size);
+
+	// swap h->av_packet and inbuf? how does reference counting/freeing work?
+	// surely inbuf must be passed to send_packet, meaning av_packet.data needs to be swapped out (and back?)
+
 	//WARNING The input buffer, av_packet->data must be AV_INPUT_BUFFER_PADDING_SIZE
 	//larger than the actual read bytes because some optimized bitstream readers
 	// read 32 or 64 bits at once and could read over the end.

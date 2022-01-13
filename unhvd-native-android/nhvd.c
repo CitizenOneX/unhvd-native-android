@@ -109,7 +109,7 @@ int nhvd_receive_all(struct nhvd *n, AVFrame *frames[], struct nhvd_frame *raws)
 	{
 		packets[i].data = streamer_frame[i].data;
 		packets[i].size = streamer_frame[i].size;
-		LOGI("PacketSize=%d", packets[i].size);
+		//LOGI("PacketSize=%d", packets[i].size);
 	}
 
 	if (nhvd_decode_frame(n, packets) != NHVD_OK)
@@ -147,10 +147,10 @@ static int nhvd_decode_frame(struct nhvd *n, struct hvd_packet *packet)
 		if(!packet[i].size) //silently skip empty subframes
 			continue; //(e.g. different framerates/B frames)
 
-		LOGI("sending packet to decoder[%d]", i);
+		//LOGI("sending packet to decoder[%d]", i);
 		if(hvd_send_packet(n->hardware_decoder[i], &packet[i]) != HVD_OK)
 			return NHVD_ERROR_MSG("error during decoding");
-		LOGI("after send packet completed");
+		//LOGI("after send packet completed");
 	}
 
 	//receive data from all hardware decoders
@@ -162,7 +162,11 @@ static int nhvd_decode_frame(struct nhvd *n, struct hvd_packet *packet)
 		//non NULL packet - get single frame
 		//NULL packet - flush the decoder, work until hardware is flushed
 		do
+		{
 			n->frame[i] = hvd_receive_frame(n->hardware_decoder[i], &error);
+			//if (n->frame[i])
+				//LOGI("Decoded linesize: %d", n->frame[i]->linesize[0]);
+		}
 		while(!packet && n->frame[i]);
 
 		if(error != NHVD_OK)
