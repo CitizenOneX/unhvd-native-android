@@ -73,7 +73,7 @@ void hdu_unproject(const struct hdu *h, const struct hdu_depth *depth, struct hd
 	for(int r=0;r<depth->height;++r)
 		for(int c=0;c<depth->width && points < pc_size;++c)
 		{
-			d = depth->data[r * depth->depth_stride / 2 + c] * h->depth_unit * 60; // FIXME L515 kludge *60? 
+			d = depth->data[r * depth->depth_stride / 2 + c] * h->depth_unit;
 			//if (d <= h->min_depth || d > h->max_depth)
 			//	continue;
 
