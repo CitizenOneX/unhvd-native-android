@@ -22,6 +22,7 @@
 #include <iostream>
 #include <string.h> //memset
 #include <android/log.h>
+#include <libavutil/pixdesc.h>
 
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "unhvd_native_android", __VA_ARGS__))
 
@@ -91,6 +92,7 @@ struct unhvd *unhvd_init(
 
 	for(int i=0;i<hw_size;++i)
 	{
+		LOGI("Allocating decoding frame %d", i);
 		if( (u->frame[i] = av_frame_alloc() ) == NULL)
 			return unhvd_close_and_return_null(u, "not enough memory for video frame");
 
@@ -101,6 +103,7 @@ struct unhvd *unhvd_init(
 	{
 		const unhvd_depth_config *dc = depth_config;
 		const hdu_config hdu_cfg = {dc->ppx, dc->ppy, dc->fx, dc->fy, dc->depth_unit, dc->min_margin, dc->max_margin};
+		LOGI("Initializing HDU: %f, %f, %f, %f, %f, %f, %f", dc->ppx, dc->ppy, dc->fx, dc->fy, dc->depth_unit, dc->min_margin, dc->max_margin);
 
 		if( (u->hardware_unprojector = hdu_init(&hdu_cfg)) == NULL )
 			return unhvd_close_and_return_null(u, "failed to initialize hardware unprojector");
@@ -115,7 +118,17 @@ struct unhvd *unhvd_init(
 static void unhvd_network_decoder_thread(unhvd *u)
 {
 	AVFrame *frames[UNHVD_MAX_DECODERS];
+	// just try initialising these frames to NULL because for some reason
+	// I'm getting a non-NULL texture frame when sending/decoding only depth data
+	// I think this was a bug
+	for (int i = 0; i < UNHVD_MAX_DECODERS; i++)
+	{
+		frames[i] = NULL;
+	}
+
 	int status;
+
+	LOGI("Network decoder thread: %d decoders, hdu: %p", u->decoders, u->hardware_unprojector);
 
 
 	while( u->keep_working &&
@@ -148,20 +161,30 @@ static void unhvd_network_decoder_thread(unhvd *u)
 	}
 
 	if(u->keep_working)
-		cerr << "unhvd: network decoder fatal error" << endl;
+		LOGI("unhvd: network decoder fatal error");
 
-	cerr << "unhvd: network decoder thread finished" << endl;
+	LOGI("unhvd: network decoder thread finished");
 }
 
 static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, const AVFrame *texture_frame, hdu_point_cloud *pc)
 {
-	if(depth_frame->linesize[0] / depth_frame->width != 2 ||
-		(depth_frame->format != AV_PIX_FMT_P010LE && depth_frame->format != AV_PIX_FMT_P016LE))
+	LOGI("Unprojecting depth frame: linesize: %d, width: %d, format: %d", depth_frame->linesize[0], depth_frame->width, depth_frame->format);
+	if (depth_frame->linesize[0] / depth_frame->width != 2 ||
+		(depth_frame->format != AV_PIX_FMT_P010LE && depth_frame->format != AV_PIX_FMT_P016LE && depth_frame->format != AV_PIX_FMT_YUV420P10LE))
+	{
+		// seems to be matching AV_PIX_FMT_YUV420P10LE(64)
+		LOGI("Depth Linesize: %d,%d,%d, Depth Frame Width: %d, Depth Frame Format: %d", depth_frame->linesize[0], depth_frame->linesize[1], depth_frame->linesize[2], depth_frame->width, depth_frame->format);
 		return UNHVD_ERROR_MSG("unhvd_unproject_depth_frame expects uint16 p010le/p016le data");
+	}
 
-	if(texture_frame && texture_frame->data[0] &&
-		texture_frame->format != AV_PIX_FMT_RGB0 && texture_frame->format != AV_PIX_FMT_RGBA)
+	LOGI("texture frame data? %p", texture_frame ? texture_frame->data[0] : NULL);
+	if (texture_frame && texture_frame->data[0] &&
+		texture_frame->format != AV_PIX_FMT_RGB0 && texture_frame->format != AV_PIX_FMT_RGBA && texture_frame->format != AV_PIX_FMT_YUV420P)
+	{
+		// seems to be matching AV_PIX_FMT_YUV420P
+		LOGI("Texture Frame Format: %d Linesize: %d,%d,%d", texture_frame->format, texture_frame->linesize[0], texture_frame->linesize[1], texture_frame->linesize[2]);
 		return UNHVD_ERROR_MSG("unhvd_unproject_depth_frame expects RGB0/RGBA texture data");
+	}
 
 	int size = depth_frame->width * depth_frame->height;
 	if(size != pc->size)
@@ -175,6 +198,7 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 	}
 
 	uint16_t *depth_data = (uint16_t*)depth_frame->data[0];
+	LOGI("Sample depth point: %d", depth_data[320*120+160]); // seems to report real data (e.g. 149, 150, 151)
 	//texture data is optional
 	uint32_t *texture_data = texture_frame ? (uint32_t*)texture_frame->data[0] : NULL;
 	int texture_linesize = texture_frame ? texture_frame->linesize[0] : 0;
@@ -183,6 +207,8 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 		depth_frame->linesize[0], texture_linesize};
 	//this could be moved to separate thread
 	hdu_unproject(u->hardware_unprojector, &depth, pc);
+	// all 0, 0, 0 at the moment
+	LOGI("Sample projected point: %f, %f, %f", pc->data[320 * 120 + 160][0], pc->data[320 * 120 + 160][1], pc->data[320 * 120 + 160][2]);
 	//zero out unused point cloud entries
 	memset(pc->data + pc->used, 0, (pc->size-pc->used)*sizeof(pc->data[0]));
 	memset(pc->colors + pc->used, 0, (pc->size-pc->used)*sizeof(pc->colors[0]));
@@ -303,7 +329,6 @@ void unhvd_close(unhvd *u)
 
 static int UNHVD_ERROR_MSG(const char *msg)
 {
-	//cerr << "unhvd: " << msg << endl;
 	LOGI("%s", msg);
 	return UNHVD_ERROR;
 }
