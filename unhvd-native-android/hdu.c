@@ -87,15 +87,17 @@ void hdu_unproject(const struct hdu *h, const struct hdu_depth *depth, struct hd
 
 			if (depth->colors)
 			{
-				LOGI("Should be no colors for now!");
-				// from before:
+				// if texture contains 32-bit RGB0 colors
 				//const uint32_t* color_line = (uint32_t*)(((uint8_t*)depth->colors) + r * depth->color_stride);
-				//pc->colors[points] = depth->colors ? color_line[c] : default_color;
-				// 
-				// change color line to 8-bit Y plane only for now, put Y into R, G, B of packed 32-bit color
+				//pc->colors[points] = color_line[c];
+				
+				// But my color line is an 8-bit Y plane only for now, so put Y into R, G, B of packed 32-bit color
 				const uint8_t* color_line = (((uint8_t*)depth->colors) + r * depth->color_stride);
-				//pc->colors[points] = (color_line[c] >> 24) + (color_line[c] >> 16) + (color_line[c] >> 8) + 255;
-				pc->colors[points] = default_color; // FIXME white for now
+				pc->colors[points] = (color_line[c] << 24) + (color_line[c] << 16) + (color_line[c] << 8) + 255;
+
+				//if (r == 120 && c == 160)
+				//	LOGI("Middle pixel color: %d 0x%x, stride:%d", color_line[c], pc->colors[points], depth->color_stride);
+				//pc->colors[points] = default_color; // or just use white for now
 			}
 			else
 			{

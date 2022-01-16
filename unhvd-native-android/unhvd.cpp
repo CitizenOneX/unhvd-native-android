@@ -168,7 +168,7 @@ static void unhvd_network_decoder_thread(unhvd *u)
 
 static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, const AVFrame *texture_frame, hdu_point_cloud *pc)
 {
-	LOGI("Unprojecting depth frame: linesize: %d, width: %d, format: %d", depth_frame->linesize[0], depth_frame->width, depth_frame->format);
+	//LOGI("Unprojecting depth frame: linesize: %d, width: %d, format: %d", depth_frame->linesize[0], depth_frame->width, depth_frame->format);
 	if (depth_frame->linesize[0] / depth_frame->width != 2 ||
 		(depth_frame->format != AV_PIX_FMT_P010LE && depth_frame->format != AV_PIX_FMT_P016LE && depth_frame->format != AV_PIX_FMT_YUV420P10LE))
 	{
@@ -177,7 +177,7 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 		return UNHVD_ERROR_MSG("unhvd_unproject_depth_frame expects uint16 p010le/p016le data");
 	}
 
-	LOGI("texture frame data? %p", texture_frame ? texture_frame->data[0] : NULL);
+	//LOGI("texture frame data? %p", texture_frame ? texture_frame->data[0] : NULL);
 	if (texture_frame && texture_frame->data[0] &&
 		texture_frame->format != AV_PIX_FMT_RGB0 && texture_frame->format != AV_PIX_FMT_RGBA && texture_frame->format != AV_PIX_FMT_YUV420P)
 	{
@@ -198,17 +198,19 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 	}
 
 	uint16_t *depth_data = (uint16_t*)depth_frame->data[0];
-	LOGI("Sample depth point: %d", depth_data[320*120+160]); // seems to report real data (e.g. 149, 150, 151)
+	//LOGI("Sample depth point: %d", depth_data[320*120+160]); // seems to report real data (e.g. 149, 150, 151)
+
 	//texture data is optional
 	uint32_t *texture_data = texture_frame ? (uint32_t*)texture_frame->data[0] : NULL;
 	int texture_linesize = texture_frame ? texture_frame->linesize[0] : 0;
 
 	hdu_depth depth = {depth_data, texture_data, depth_frame->width, depth_frame->height,
 		depth_frame->linesize[0], texture_linesize};
+
 	//this could be moved to separate thread
 	hdu_unproject(u->hardware_unprojector, &depth, pc);
-	// all 0, 0, 0 at the moment
-	LOGI("Sample projected point: %f, %f, %f", pc->data[320 * 120 + 160][0], pc->data[320 * 120 + 160][1], pc->data[320 * 120 + 160][2]);
+	//LOGI("Sample projected point: %f, %f, %f", pc->data[320 * 120 + 160][0], pc->data[320 * 120 + 160][1], pc->data[320 * 120 + 160][2]);
+
 	//zero out unused point cloud entries
 	memset(pc->data + pc->used, 0, (pc->size-pc->used)*sizeof(pc->data[0]));
 	memset(pc->colors + pc->used, 0, (pc->size-pc->used)*sizeof(pc->colors[0]));
