@@ -97,8 +97,8 @@ void hdu_unproject(const struct hdu *h, const struct hdu_depth *depth, struct hd
 				//pc->colors[points] = (color_line[c] << 24) + (color_line[c] << 16) + (color_line[c] << 8) + 255;
 				pc->colors[points] = color_line[c];
 
-				if (r == 120 && c == 160)
-					LOGI("Middle pixel color in native lib: %d 0x%x, stride:%d", color_line[c], pc->colors[points], depth->color_stride);
+				//if (r == 120 && c == 160)
+				//	LOGI("Middle pixel color in native lib: %d 0x%x, stride:%d", color_line[c], pc->colors[points], depth->color_stride);
 				//pc->colors[points] = default_color; // or just use white for now
 			}
 			else
