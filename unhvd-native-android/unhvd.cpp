@@ -192,7 +192,7 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 		delete [] pc->data;
 		delete [] pc->colors;
 		pc->data = new float3[size];
-		pc->colors = new color32[size];
+		pc->colors = new uint8_t[size];  // only setting the Y value as a byte for now. *3 / 2]; // YUV420P uses 12bpp
 		pc->size = size;
 		pc->used = 0;
 	}
@@ -201,7 +201,7 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 	//LOGI("Sample depth point: %d", depth_data[320*120+160]); // seems to report real data (e.g. 149, 150, 151)
 
 	//texture data is optional
-	uint32_t *texture_data = texture_frame ? (uint32_t*)texture_frame->data[0] : NULL;
+	uint8_t *texture_data = texture_frame ? (uint8_t*)texture_frame->data[0] : NULL;
 	int texture_linesize = texture_frame ? texture_frame->linesize[0] : 0;
 
 	hdu_depth depth = {depth_data, texture_data, depth_frame->width, depth_frame->height,

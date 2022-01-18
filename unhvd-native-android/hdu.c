@@ -66,7 +66,7 @@ void hdu_unproject(const struct hdu *h, const struct hdu_depth *depth, struct hd
 	//LOGI("hdu_unproject hdu      : %f,%f,%f,%f,%f,%f,%f", h->fx, h->fy, h->ppx, h->ppy, h->min_depth, h->max_depth, h->depth_unit);
 	//LOGI("hdu_unproject pc       : %d,%d,%p,%p", pc->size, pc->used, pc->data, pc->colors);
 	const int pc_size = pc->size;
-	const color32 default_color = 0xFFFFFFFF;
+	const uint8_t default_color = 0xFF; // 0xFFFFFFFF for 32-bit
 	int points=0;
 	float d;
 
@@ -91,12 +91,14 @@ void hdu_unproject(const struct hdu *h, const struct hdu_depth *depth, struct hd
 				//const uint32_t* color_line = (uint32_t*)(((uint8_t*)depth->colors) + r * depth->color_stride);
 				//pc->colors[points] = color_line[c];
 				
-				// But my color line is an 8-bit Y plane only for now, so put Y into R, G, B of packed 32-bit color
+				// But my color line is an 8-bit Y plane only for now, (plus U and V planes) 
+				// so put Y into uint8_t color array
 				const uint8_t* color_line = (((uint8_t*)depth->colors) + r * depth->color_stride);
-				pc->colors[points] = (color_line[c] << 24) + (color_line[c] << 16) + (color_line[c] << 8) + 255;
+				//pc->colors[points] = (color_line[c] << 24) + (color_line[c] << 16) + (color_line[c] << 8) + 255;
+				pc->colors[points] = color_line[c];
 
-				//if (r == 120 && c == 160)
-				//	LOGI("Middle pixel color: %d 0x%x, stride:%d", color_line[c], pc->colors[points], depth->color_stride);
+				if (r == 120 && c == 160)
+					LOGI("Middle pixel color in native lib: %d 0x%x, stride:%d", color_line[c], pc->colors[points], depth->color_stride);
 				//pc->colors[points] = default_color; // or just use white for now
 			}
 			else
