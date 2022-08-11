@@ -53,7 +53,7 @@ typedef uint32_t color32;
 struct hdu_point_cloud
 {
 	float3 *data;
-	uint8_t *colors;
+	color32 *colors;
 	int size;
 	int used;
 };

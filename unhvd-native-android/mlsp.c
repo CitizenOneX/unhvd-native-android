@@ -25,7 +25,7 @@
   #include <arpa/inet.h> //inet_pton, etc
 #endif
 
-enum {PACKET_MAX_PAYLOAD=1400, PACKET_HEADER_SIZE=8};
+enum {PACKET_MAX_PAYLOAD=1400, PACKET_HEADER_SIZE=8, SEND_RECEIVE_BUF_SIZE=262144};
 
 //some higher level libraries may have optimized routines
 //with reads exceeding end of buffer
@@ -160,6 +160,14 @@ struct mlsp *mlsp_init_client(const struct mlsp_config *config)
 		return mlsp_close_and_return_null(m);
 	}
 
+	int optval = SEND_RECEIVE_BUF_SIZE;
+	int optlen = sizeof(optval);
+	if (setsockopt(m->socket_udp, SOL_SOCKET, SO_SNDBUF, (char*)&optval, optlen) < 0)
+	{
+		fprintf(stderr, "mlsp: failed to set sndbuf size for socket\n");
+		return mlsp_close_and_return_null(m);
+	}
+
 	return m;
 }
 
@@ -187,9 +195,19 @@ struct mlsp *mlsp_init_server(const struct mlsp_config *config)
 		if (setsockopt(m->socket_udp, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
 		#endif
 		{
-			fprintf(stderr, "mlsp: failed to set timetout for socket\n");
+			fprintf(stderr, "mlsp: failed to set timeout for socket\n");
 			return mlsp_close_and_return_null(m);
 		}
+	}
+
+	// make sure the recv buffer size is sensible, default on my machine was 64k
+	// which was a bit small once audio was added
+	int optval = SEND_RECEIVE_BUF_SIZE;
+	int optlen = sizeof(optval);
+	if (setsockopt(m->socket_udp, SOL_SOCKET, SO_RCVBUF, (char*)&optval, optlen) < 0)
+	{
+		fprintf(stderr, "mlsp: failed to set rcvbuf size for socket\n");
+		return mlsp_close_and_return_null(m);
 	}
 
 	if( bind(m->socket_udp, (struct sockaddr*)&m->address_udp, sizeof(m->address_udp) ) == -1 )
@@ -233,9 +251,9 @@ int mlsp_send(struct mlsp *m, const struct mlsp_frame *frame, uint8_t subframe)
 	const uint32_t data_size = frame->size;
 
 	//if size is not divisible by MAX_PAYLOAD we have additional packet with the rest
-	const uint16_t packets = data_size / PACKET_MAX_PAYLOAD + ((data_size % PACKET_MAX_PAYLOAD) != 0);
+	const uint16_t packets = data_size ? data_size / PACKET_MAX_PAYLOAD + ((data_size % PACKET_MAX_PAYLOAD) != 0) : 1;
 	//last packet is smaller unless it is exactly MAX_PAYLOAD size
-	const uint16_t last_packet_size = ((data_size % PACKET_MAX_PAYLOAD) !=0 ) ? data_size % PACKET_MAX_PAYLOAD : PACKET_MAX_PAYLOAD;
+	const uint16_t last_packet_size = data_size ? ((data_size % PACKET_MAX_PAYLOAD) !=0 ) ? data_size % PACKET_MAX_PAYLOAD : PACKET_MAX_PAYLOAD : 0;
 
 	if(m->transferred_subframes[subframe])
 	{
@@ -394,7 +412,7 @@ static int mlsp_decode_header(const struct mlsp *m, int size, struct mlsp_packet
 		return MLSP_ERROR;
 	}
 
-	udp->data = data + PACKET_HEADER_SIZE;
+	udp->data = udp->size ? data + PACKET_HEADER_SIZE : NULL; // set data pointer to NULL for empty packet
 	return MLSP_OK;
 }
 

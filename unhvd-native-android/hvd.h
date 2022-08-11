@@ -29,6 +29,9 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
+#include <float.h>
+#include <stdarg.h>
 #include <libavcodec/avcodec.h>
 
 /** \addtogroup interface Public interface
