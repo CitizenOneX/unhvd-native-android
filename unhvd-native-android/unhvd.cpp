@@ -165,7 +165,7 @@ static void unhvd_network_decoder_thread(unhvd *u)
 		}
 
 		// TODO remove after testing
-		LOGI("Frame sizes: %d, %d, %d, %d", u->raws[0].size, u->raws[1].size, u->raws[2].size, u->raws[3].size);
+		//LOGI("Frame sizes: %d, %d, %d, %d", u->raws[0].size, u->raws[1].size, u->raws[2].size, u->raws[3].size);
 	}
 
 	if(u->keep_working)
