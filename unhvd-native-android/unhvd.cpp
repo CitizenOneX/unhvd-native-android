@@ -94,6 +94,7 @@ struct unhvd *unhvd_init(
 		return unhvd_close_and_return_null(u, "failed to initialize NHVD");
 
 	u->decoders = hw_size;
+	u->auxes = aux_size;
 
 	for(int i=0;i<hw_size;++i)
 	{
@@ -168,8 +169,11 @@ static void unhvd_network_decoder_thread(unhvd *u)
 		//LOGI("Frame sizes: %d, %d, %d, %d", u->raws[0].size, u->raws[1].size, u->raws[2].size, u->raws[3].size);
 	}
 
-	if(u->keep_working)
+	if (u->keep_working)
+	{
 		LOGI("unhvd: network decoder fatal error");
+		u->keep_working = false; // signal the rest of the program that the network thread is finished
+	}
 
 	LOGI("unhvd: network decoder thread finished");
 }
@@ -187,11 +191,11 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 
 	//LOGI("texture frame data? %p", texture_frame ? texture_frame->data[0] : NULL);
 	if (texture_frame && texture_frame->data[0] &&
-		texture_frame->format != AV_PIX_FMT_RGB0 && texture_frame->format != AV_PIX_FMT_RGBA && texture_frame->format != AV_PIX_FMT_YUV420P)
+		texture_frame->format != AV_PIX_FMT_YUV420P)
 	{
 		// seems to be matching AV_PIX_FMT_YUV420P
 		LOGI("Texture Frame Format: %d Linesize: %d,%d,%d", texture_frame->format, texture_frame->linesize[0], texture_frame->linesize[1], texture_frame->linesize[2]);
-		return UNHVD_ERROR_MSG("unhvd_unproject_depth_frame expects RGB0/RGBA texture data");
+		return UNHVD_ERROR_MSG("unhvd_unproject_depth_frame expects YUV420P texture data");
 	}
 
 	int size = depth_frame->width * depth_frame->height;
@@ -236,16 +240,30 @@ int unhvd_get_begin(unhvd *u, unhvd_frame *frame, unhvd_point_cloud *pc)
 
 	bool new_data = false;
 
-	for(int i=0;i<u->decoders;++i)
-		if(u->frame[i]->data[0] != NULL)
+	// check for new data in any decoded channel
+	for (int i = 0; i < u->decoders; ++i)
+		if (u->frame[i]->data[0] != NULL)
+		{
 			new_data = true;
+			break;
+		}
+
+	// check for new data in any auxilliary channel
+	if (!new_data)
+		for (int i = 0; i < u->auxes; ++i)
+			if (u->raws[u->decoders + i].data != NULL)
+			{
+				new_data = true;
+				break;
+			}
 
 	//for user convinience, return ERROR if there is no new data
 	if(!new_data)
 		return UNHVD_ERROR;
 
-	if(frame)
-		for(int i=0;i<u->decoders;++i)
+	if (frame)
+	{
+		for (int i = 0; i < u->decoders; ++i)
 		{
 			frame[i].width = u->frame[i]->width;
 			frame[i].height = u->frame[i]->height;
@@ -255,6 +273,20 @@ int unhvd_get_begin(unhvd *u, unhvd_frame *frame, unhvd_point_cloud *pc)
 			memcpy(frame[i].linesize, u->frame[i]->linesize, sizeof(frame[i].linesize));
 			memcpy(frame[i].data, u->frame[i]->data, sizeof(frame[i].data));
 		}
+
+		// copy auxilliary channels over
+		for (int i = 0; i < u->auxes; ++i)
+		{
+			int j = u->decoders + i;
+			frame[j].width = 0;
+			frame[j].height = 0;
+			frame[j].format = 0;
+
+			//copy just an int and a pointer, not the actual data
+			frame[j].linesize[0] = u->raws[j].size;
+			frame[j].data[0] = u->raws[j].data;
+		}
+	}
 
 	if(pc && u->hardware_unprojector)
 	{
@@ -276,6 +308,11 @@ int unhvd_get_end(struct unhvd *u)
 
 	for(int i=0;i<u->decoders;++i)
 		av_frame_unref(u->frame[i]);
+
+	// zero out the aux data so get_begin can tell if frames are new
+	// TODO check if the data needs to be freed
+	for (int i = 0; i < u->auxes; ++i)
+		u->raws[u->decoders + i].data = NULL;
 
 	u->mutex.unlock();
 
