@@ -11,7 +11,6 @@
 
 #include "mlsp.h"
 
-#include <stdio.h> //fprintf
 #include <stdlib.h> //malloc
 #include <string.h> //memcpy
 #include <errno.h> //errno
@@ -25,7 +24,21 @@
   #include <arpa/inet.h> //inet_pton, etc
 #endif
 
-enum {PACKET_MAX_PAYLOAD=1400, PACKET_HEADER_SIZE=8, SEND_RECEIVE_BUF_SIZE=262144};
+#ifdef __ANDROID__
+#include <android/log.h>
+#define LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, "unhvd-native", __VA_ARGS__))
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "unhvd-native", __VA_ARGS__))
+#define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "unhvd-native", __VA_ARGS__))
+#else
+#include <stdio.h> //fprintf
+ // what about the '\n'
+#define LOGD(...) ((void)fprintf(stderr, __VA_ARGS__))
+#define LOGI(...) ((void)fprintf(stderr, __VA_ARGS__))
+#define LOGE(...) ((void)fprintf(stderr, __VA_ARGS__))
+#endif // ANDROId
+
+
+enum { PACKET_MAX_PAYLOAD = 1400, PACKET_HEADER_SIZE = 8, SEND_RECEIVE_BUF_SIZE = 1048576 }; //262144};
 
 //some higher level libraries may have optimized routines
 //with reads exceeding end of buffer
@@ -98,13 +111,13 @@ static struct mlsp *mlsp_init_common(const struct mlsp_config *config)
 
 	if(config->subframes > MLSP_MAX_SUBFRAMES)
 	{
-		fprintf(stderr, "mlsp: the maximum number of subframes (compile time) exceed\n");
+		LOGE("mlsp: the maximum number of subframes (compile time) exceed\n");
 		return NULL;
 	}
 
 	if( ( m = (struct mlsp*)malloc(sizeof(struct mlsp))) == NULL )
 	{
-		fprintf(stderr, "mlsp: not enough memory for mlsp\n");
+		LOGE("mlsp: not enough memory for mlsp\n");
 		return NULL;
 	}
 
@@ -115,7 +128,7 @@ static struct mlsp *mlsp_init_common(const struct mlsp_config *config)
 	#ifdef _WINDOWS
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-		fprintf(stderr, "mlsp: WSAStartup failed with error: %d\n", WSAGetLastError());
+		LOGE("mlsp: WSAStartup failed with error: %d\n", WSAGetLastError());
 		return NULL;
 	}
 	#endif 
@@ -127,7 +140,7 @@ static struct mlsp *mlsp_init_common(const struct mlsp_config *config)
 	#endif
 	if ( (m->socket_udp = socket(AF_INET, stype, IPPROTO_UDP) ) == -1)
 	{
-		fprintf(stderr, "mlsp: failed to initialize UDP socket\n");
+		LOGE("mlsp: failed to initialize UDP socket\n");
 		return mlsp_close_and_return_null(m);
 	}
 
@@ -140,7 +153,7 @@ static struct mlsp *mlsp_init_common(const struct mlsp_config *config)
 	//- use INADDR_ANY if address was not specified for server
 	if (config->ip != NULL && config->ip[0] != '\0' && !inet_pton(AF_INET, config->ip, &m->address_udp.sin_addr) )
 	{
-		fprintf(stderr, "mlsp: failed to initialize UDP address\n");
+		LOGE("mlsp: failed to initialize UDP address\n");
 		return mlsp_close_and_return_null(m);
 	}
 
@@ -156,7 +169,7 @@ struct mlsp *mlsp_init_client(const struct mlsp_config *config)
 
 	if(config->ip == NULL || config->ip[0] == '\0')
 	{
-		fprintf(stderr, "mlsp: missing address argument for client\n");
+		LOGE("mlsp: missing address argument for client\n");
 		return mlsp_close_and_return_null(m);
 	}
 
@@ -164,7 +177,7 @@ struct mlsp *mlsp_init_client(const struct mlsp_config *config)
 	int optlen = sizeof(optval);
 	if (setsockopt(m->socket_udp, SOL_SOCKET, SO_SNDBUF, (char*)&optval, optlen) < 0)
 	{
-		fprintf(stderr, "mlsp: failed to set sndbuf size for socket\n");
+		LOGE("mlsp: failed to set sndbuf size for socket\n");
 		return mlsp_close_and_return_null(m);
 	}
 
@@ -195,7 +208,7 @@ struct mlsp *mlsp_init_server(const struct mlsp_config *config)
 		if (setsockopt(m->socket_udp, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
 		#endif
 		{
-			fprintf(stderr, "mlsp: failed to set timeout for socket\n");
+			LOGE("mlsp: failed to set timeout for socket\n");
 			return mlsp_close_and_return_null(m);
 		}
 	}
@@ -206,13 +219,13 @@ struct mlsp *mlsp_init_server(const struct mlsp_config *config)
 	int optlen = sizeof(optval);
 	if (setsockopt(m->socket_udp, SOL_SOCKET, SO_RCVBUF, (char*)&optval, optlen) < 0)
 	{
-		fprintf(stderr, "mlsp: failed to set rcvbuf size for socket\n");
+		LOGE("mlsp: failed to set rcvbuf size for socket\n");
 		return mlsp_close_and_return_null(m);
 	}
 
 	if( bind(m->socket_udp, (struct sockaddr*)&m->address_udp, sizeof(m->address_udp) ) == -1 )
 	{
-		fprintf(stderr, "mlsp: failed to bind socket to address\n");
+		LOGE("mlsp: failed to bind socket to address\n");
 		return mlsp_close_and_return_null(m);
 	}
 
@@ -229,7 +242,7 @@ void mlsp_close(struct mlsp *m)
 	#else
 	if(close(m->socket_udp) == -1)
 	#endif
-		fprintf(stderr, "mlsp: error while closing socket\n");
+		LOGE("mlsp: error while closing socket\n");
 
 	for(int i=0;i<m->subframes;++i)
 	{
@@ -292,7 +305,7 @@ static int mlsp_send_udp(struct mlsp *m, int data_size)
 	{
 		if ((result = sendto(m->socket_udp, m->data+written, data_size-written, 0, (struct sockaddr*)&m->address_udp, sizeof(m->address_udp))) == -1)
 		{
-			fprintf(stderr, "mlsp: failed to send udp data\n");
+			LOGE("mlsp: failed to send udp data\n");
 			return MLSP_ERROR;
 		}
 		written += result;
@@ -335,7 +348,7 @@ const struct mlsp_frame *mlsp_receive(struct mlsp *m, int *error)
 
 		if(collected->received_packets[udp.packet])
 		{
-			fprintf(stderr, "mlsp: ignoring packet (duplicate)\n");
+			LOGD("mlsp: ignoring packet (duplicate)\n");
 			continue;
 		}
 
@@ -370,7 +383,7 @@ static int mlsp_decode_header(const struct mlsp *m, int size, struct mlsp_packet
 
 	if(size < PACKET_HEADER_SIZE)
 	{
-		fprintf(stderr, "mlsp: packet size smaller than MLSP header\n");
+		LOGE("mlsp: packet size smaller than MLSP header\n");
 		return MLSP_ERROR;
 	}
 
@@ -384,31 +397,31 @@ static int mlsp_decode_header(const struct mlsp *m, int size, struct mlsp_packet
 
 	if(udp->size > PACKET_MAX_PAYLOAD)
 	{
-		fprintf(stderr, "mlsp: packet paylod size would exceed max paylod\n");
+		LOGE("mlsp: packet paylod size would exceed max paylod\n");
 		return MLSP_ERROR;
 	}
 
 	if(udp->subframe >= udp->subframes)
 	{
-		fprintf(stderr, "mlsp: decoded packet would exceed frame subframes\n");
+		LOGE("mlsp: decoded packet would exceed frame subframes\n");
 		return MLSP_ERROR;
 	}
 
 	if(udp->packet >= udp->packets)
 	{
-		fprintf(stderr, "mlsp: decoded packet would exceed frame packets\n");
+		LOGE("mlsp: decoded packet would exceed frame packets\n");
 		return MLSP_ERROR;
 	}
 
 	if(udp->framenumber < m->framenumber)
 	{
-		fprintf(stderr, "mlsp: ignoring packet with older framenumber\n");
+		LOGI("mlsp: ignoring packet with older framenumber\n");
 		return MLSP_ERROR;
 	}
 
 	if(udp->subframes > m->subframes || udp->subframe >= m->subframes)
 	{
-		fprintf(stderr, "mlsp: ignoring packet with incorrect subframe(s)\n");
+		LOGI("mlsp: ignoring packet with incorrect subframe(s)\n");
 		return MLSP_ERROR;
 	}
 
@@ -431,12 +444,12 @@ static void mlsp_new_frame(struct mlsp *m, uint16_t framenumber)
 		for(int s=0;s<m->subframes;++s)
 			if(!m->transferred_subframes[s] && m->collected[s].packets)
 			{
-				fprintf(stderr, "mlsp: ignoring incomplete frame %d/%d: %d/%d\n", framenumber, s,
+				LOGI("mlsp: ignoring incomplete frame %d/%d: %d/%d\n", framenumber, s,
 				m->collected[s].collected_packets, m->collected[s].packets);
 
 				for(int i=0;i<m->collected[s].packets;++i)
-					fprintf(stderr, "%d", m->collected[s].received_packets[i]);
-				fprintf(stderr, "\n");
+					LOGI("%d", m->collected[s].received_packets[i]);
+				LOGI("\n");
 			}
 
 	m->framenumber = framenumber;
@@ -464,7 +477,7 @@ static int mlsp_new_subframe(struct mlsp_collected_frame *collected, struct mlsp
 		free(collected->data);
 		if ( (collected->data = malloc ( udp->packets * PACKET_MAX_PAYLOAD + BUFFER_PADDING_SIZE ) ) == NULL)
 		{
-			fprintf(stderr, "mlsp: not enough memory for subframe\n");
+			LOGE("mlsp: not enough memory for subframe\n");
 			return MLSP_ERROR;
 		}
 		collected->reserved_size = udp->packets * PACKET_MAX_PAYLOAD;
@@ -475,7 +488,7 @@ static int mlsp_new_subframe(struct mlsp_collected_frame *collected, struct mlsp
 		free(collected->received_packets);
 		if ( (collected->received_packets = malloc ( udp->packets) ) == NULL )
 		{
-			fprintf(stderr, "mlsp: not enough memory for recevied subframe packets flags\n");
+			LOGE("mlsp: not enough memory for recevied subframe packets flags\n");
 			return MLSP_ERROR;
 		}
 		collected->received_packets_size = udp->packets;
