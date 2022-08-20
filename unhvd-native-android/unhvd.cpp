@@ -15,6 +15,8 @@
 #include "nhvd.h"
 // Hardware Depth Unprojector library
 #include "hdu.h"
+// Android Audio Output Stream
+#include "aaos.h"
 
 #include <thread>
 #include <mutex>
@@ -48,6 +50,8 @@ struct unhvd
 	hdu *hardware_unprojector;
 	hdu_point_cloud point_cloud, point_cloud_shared;
 
+	aaos* audio;
+
 	thread network_thread;
 	bool keep_working;
 
@@ -60,6 +64,7 @@ struct unhvd
 			hardware_unprojector(NULL),
 			point_cloud(),
 			point_cloud_shared(),
+			audio(NULL),
 			keep_working(true)
 	{}
 };
@@ -115,6 +120,9 @@ struct unhvd *unhvd_init(
 			return unhvd_close_and_return_null(u, "failed to initialize hardware unprojector");
 	}
 
+	// set up the native audio output
+	u->audio = aaos_init();
+
 	u->network_thread = thread(unhvd_network_decoder_thread, u);
 	
 	LOGI("unhvd: finishing unhvd_init()");
@@ -146,6 +154,13 @@ static void unhvd_network_decoder_thread(unhvd *u)
 		if(u->hardware_unprojector && frames[0])
 			if(unhvd_unproject_depth_frame(u, frames[0], frames[1], &u->point_cloud) != UNHVD_OK)
 				break;
+
+		// TODO try writing the first aux channel to the audio device for frames that include audio
+		if (u->auxes == 1 && u->raws[u->decoders].size > 0)
+		{
+			// aux channel 1 is an array of bytes that are 4-byte floats encoded
+			aaos_write(u->audio, (float*)u->raws[u->decoders].data, u->raws[u->decoders].size / 4);
+		}
 
 		//the next call to nhvd_receive will unref the current
 		//frames so we have to either consume set of frames or ref it
@@ -370,6 +385,8 @@ void unhvd_close(unhvd *u)
 	delete [] u->point_cloud.colors;
 	delete [] u->point_cloud_shared.data;
 	delete [] u->point_cloud_shared.colors;
+
+	aaos_close(u->audio);
 
 	delete u;
 }

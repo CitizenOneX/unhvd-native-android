@@ -6,6 +6,7 @@
     <ClCompile Include="hvd.c" />
     <ClCompile Include="nhvd.c" />
     <ClCompile Include="unhvd.cpp" />
+    <ClCompile Include="aaos.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="hdu.h" />
@@ -13,5 +14,6 @@
     <ClInclude Include="hvd.h" />
     <ClInclude Include="nhvd.h" />
     <ClInclude Include="unhvd.h" />
+    <ClInclude Include="aaos.h" />
   </ItemGroup>
 </Project>

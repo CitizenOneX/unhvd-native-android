@@ -64,6 +64,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>Clang_5_0</PlatformToolset>
+    <AndroidAPILevel>android-26</AndroidAPILevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -189,6 +190,7 @@
     <Link>
       <AdditionalDependencies>$(SolutionDir)..\ffmpeg-android-maker\output\lib\armeabi-v7a\libavcodec.so;$(SolutionDir)..\ffmpeg-android-maker\output\lib\armeabi-v7a\libavutil.so</AdditionalDependencies>
       <SharedLibrarySearchPath>%(SharedLibrarySearchPath);$(SysrootLink)\usr\lib;$(SolutionDir)..\ffmpeg-android-maker\output\lib\armeabi-v7a</SharedLibrarySearchPath>
+      <LibraryDependencies>aaudio;%(LibraryDependencies)</LibraryDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy /y $(OutputPath)libunhvd.so $(SolutionDir)..\nreal-unity-nhvd\Assets\Plugins\Android</Command>
@@ -198,6 +200,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="aaos.c" />
     <ClCompile Include="hdu.c" />
     <ClCompile Include="hvd.c" />
     <ClCompile Include="mlsp.c" />
@@ -205,6 +208,7 @@
     <ClCompile Include="unhvd.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="aaos.h" />
     <ClInclude Include="hdu.h" />
     <ClInclude Include="hvd.h" />
     <ClInclude Include="mlsp.h" />
