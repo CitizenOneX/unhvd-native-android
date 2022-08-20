@@ -27,10 +27,10 @@ struct aaos* aaos_init()
 
 	AAudioStreamBuilder* builder = NULL;
 	aaudio_result_t result = AAudio_createStreamBuilder(&builder);
-	AAudioStreamBuilder_setChannelCount(builder, 1); // TODO set back to Mono, try stereo if needed
+	AAudioStreamBuilder_setChannelCount(builder, 1); // Mono
 	AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED); // Maybe we need EX mode if we want LOW_LATENCY? Doesn't seem to give it to me anyway
-	AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY); // doesn't seem to respect LOW_LATENCY, but does give me POWER_SAVING if I ask. But does lower buffer sizes.
-	AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_FLOAT); // TODO would be nice to try int16 as well; halves the data
+	AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_NONE); // doesn't seem to respect LOW_LATENCY, but does give me POWER_SAVING if I ask. But does lower buffer sizes.
+	AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_I16); // signed int16 data
 	AAudioStreamBuilder_setSampleRate(builder, 24000);
 
 	LOGI("aaos: Created the AAudioStreamBuilder: %s", AAudio_convertResultToText(result));
@@ -88,7 +88,7 @@ static struct aaos* aaos_close_and_return_null(struct aaos* a, const char* msg)
 }
 
 // push the samples directly to the buffer
-int32_t aaos_write(struct aaos* a, const float* buffer, const int32_t buflen)
+int32_t aaos_write(struct aaos* a, const int16_t* buffer, const int32_t buflen)
 {
 	// write the audio data non-blocking (write, or dump if the buffer is full?)
 	aaudio_result_t result = AAudioStream_write(a->stream, buffer, buflen, 0);

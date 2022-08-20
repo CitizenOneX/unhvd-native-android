@@ -158,8 +158,8 @@ static void unhvd_network_decoder_thread(unhvd *u)
 		// TODO try writing the first aux channel to the audio device for frames that include audio
 		if (u->auxes == 1 && u->raws[u->decoders].size > 0)
 		{
-			// aux channel 1 is an array of bytes that are 4-byte floats encoded
-			aaos_write(u->audio, (float*)u->raws[u->decoders].data, u->raws[u->decoders].size / 4);
+			// aux channel 1 is an array of bytes that are 2-byte int16_t encoded
+			aaos_write(u->audio, (int16_t*)u->raws[u->decoders].data, u->raws[u->decoders].size / 2);
 		}
 
 		//the next call to nhvd_receive will unref the current
