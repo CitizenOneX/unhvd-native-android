@@ -90,7 +90,7 @@ int nhvd_receive(struct nhvd *n, AVFrame *frames[])
 
 int nhvd_receive_all(struct nhvd *n, AVFrame *frames[], struct nhvd_frame *raws)
 {
-	struct hvd_packet packets[NHVD_MAX_DECODERS] = {0};
+	struct hvd_packet packets[NHVD_MAX_DECODERS] = { {0} };
 	const struct mlsp_frame *streamer_frame;
 	int error;
 
@@ -165,7 +165,7 @@ static int nhvd_decode_frame(struct nhvd *n, struct hvd_packet *packet)
 		{
 			n->frame[i] = hvd_receive_frame(n->hardware_decoder[i], &error);
 			//if (n->frame[i])
-				//LOGI("Decoded linesize: %d", n->frame[i]->linesize[0]);
+			//	LOGI("Decoded linesize: %d", n->frame[i]->linesize[0]);
 		}
 		while(!packet && n->frame[i]);
 

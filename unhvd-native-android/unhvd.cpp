@@ -77,7 +77,7 @@ struct unhvd *unhvd_init(
 	
 	LOGI("starting unhvd_init()");
 	nhvd_net_config nhvd_net = {net_config->ip, net_config->port, net_config->timeout_ms};
-	nhvd_hw_config nhvd_hw[UNHVD_MAX_DECODERS] = {0};
+	nhvd_hw_config nhvd_hw[UNHVD_MAX_DECODERS] = { {0} };
 
 	if(hw_size > UNHVD_MAX_DECODERS)
 		return unhvd_close_and_return_null(NULL, "the maximum number of decoders (compile time) exceeded");
@@ -150,6 +150,13 @@ static void unhvd_network_decoder_thread(unhvd *u)
 	{
 		if(status == NHVD_TIMEOUT)
 			continue; //keep working
+
+		// TODO sanity check the depth values then remove
+		if (frames[0] && frames[0]->data[0])
+		{
+			uint16_t* depth_data = (uint16_t*)frames[0]->data[0];
+			LOGI("Center depth point: %d", depth_data[frames[0]->linesize[0] * frames[0]->height / 4 + frames[0]->width / 2]); // seems to report real data (e.g. 1..1000)
+		}
 
 		if(u->hardware_unprojector && frames[0])
 			if(unhvd_unproject_depth_frame(u, frames[0], frames[1], &u->point_cloud) != UNHVD_OK)
@@ -225,7 +232,7 @@ static int unhvd_unproject_depth_frame(unhvd *u, const AVFrame *depth_frame, con
 	}
 
 	uint16_t *depth_data = (uint16_t*)depth_frame->data[0];
-	//LOGI("Sample depth point: %d", depth_data[320*120+160]); // seems to report real data (e.g. 149, 150, 151)
+	//LOGI("Center depth point: %d", depth_data[depth_frame->width * depth_frame->height / 2 + depth_frame->width / 2]); // seems to report real data (e.g. 149, 150, 151)
 
 	//texture data is optional
 	uint8_t *texture_data = texture_frame ? (uint8_t*)texture_frame->data[0] : NULL;
