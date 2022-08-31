@@ -152,11 +152,11 @@ static void unhvd_network_decoder_thread(unhvd *u)
 			continue; //keep working
 
 		// TODO sanity check the depth values then remove
-		if (frames[0] && frames[0]->data[0])
-		{
-			uint16_t* depth_data = (uint16_t*)frames[0]->data[0];
-			LOGI("Center depth point: %d", depth_data[frames[0]->linesize[0] * frames[0]->height / 4 + frames[0]->width / 2]); // seems to report real data (e.g. 1..1000)
-		}
+		//if (frames[0] && frames[0]->data[0])
+		//{
+		//	uint16_t* depth_data = (uint16_t*)frames[0]->data[0];
+		//	LOGI("Center depth point: %d", depth_data[frames[0]->linesize[0] * frames[0]->height / 4 + frames[0]->width / 2]); // seems to report real data (e.g. 1..1000)
+		//}
 
 		if(u->hardware_unprojector && frames[0])
 			if(unhvd_unproject_depth_frame(u, frames[0], frames[1], &u->point_cloud) != UNHVD_OK)
